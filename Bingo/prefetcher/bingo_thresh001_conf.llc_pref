@@ -597,7 +597,7 @@ class Bingo {
             vector<bool> pattern = this->find_in_phts(pc, block_number);
             if (pattern.empty())
                 return vector<uint64_t>();
-            if (this->pht.get_confidence(pc, block_number) >= 0) {    
+            if (this->pht.get_confidence(pc, block_number) >= 2) {    
                 vector<uint64_t> to_prefetch;
                 for (int i = 0; i < this->pattern_len; i += 1)
                     if (pattern[i])
