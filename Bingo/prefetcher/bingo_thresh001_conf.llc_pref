@@ -1,7 +1,7 @@
 /* Bingo */
 
-#define INC_MATCH_THRESHOLD 0.0
-#define DEC_MATCH_THRESHOLD 0.0
+#define INC_MATCH_THRESHOLD 0.4
+#define DEC_MATCH_THRESHOLD 0.25
 
 #include "cache.h"
 #include <bits/stdc++.h>
@@ -440,7 +440,7 @@ template <class T> vector<T> my_rotate(const vector<T> &x, int n) {
     return y;
 }
 
-#define THRESH 0.01
+#define THRESH 0.80
 
 class PatternHistoryTableData {
   public:
@@ -587,6 +587,7 @@ class Bingo {
         }
         uint64_t region_number = block_number / this->pattern_len;
         int region_offset = block_number % this->pattern_len;
+        uint64_t offset = block_number & ((1 << 5) - 1);
         bool success = this->accumulation_table.set_pattern(region_number, region_offset);
         if (success)
             return vector<uint64_t>();
@@ -597,7 +598,9 @@ class Bingo {
             vector<bool> pattern = this->find_in_phts(pc, block_number);
             if (pattern.empty())
                 return vector<uint64_t>();
-            if (this->pht.get_confidence(pc, block_number) >= 2) {    
+
+            // printf("PC: %u, Address: %u, Offset: %u, Confidence: %u, Pattern: %s \n", pc, block_number, offset, this->pht.get_confidence(pc, block_number), (this->pht.find(pc, block_number)).empty() ? "true" : "false");
+            if (this->pht.get_confidence(pc, block_number) >= 1) {    
                 vector<uint64_t> to_prefetch;
                 for (int i = 0; i < this->pattern_len; i += 1)
                     if (pattern[i])
@@ -653,8 +656,28 @@ class Bingo {
         vector<bool> old_pattern = this->pht.find(pc,address);
         uint8_t confidence = this->pht.get_confidence(pc, address);
 
-        if (old_pattern.empty()) {
+        // printf("For PC: %u, Address: %u, the pattern is\n", pc, address);
+        // printf("[");
+        // for (size_t i = 0; i < old_pattern.size(); i += 1) {
+        //     printf("%s", old_pattern[i] ? "true" : "false");
+        //     if (i < old_pattern.size() - 1) {
+        //         printf(", ");
+        //     }
+        // }
+        // printf("]\n");
+
+        // check if all entries in old pattern are false
+        bool all_false = true;
+        for (size_t i = 0; i < old_pattern.size(); i += 1) {
+            if (old_pattern[i]) {
+                all_false = false;
+                break;
+            }
+        }
+        if (all_false) {
+            // printf("Found empty pattern for PC: %u, Address: %u\n", pc, address);
             this->pht.insert(pc, address, pattern, 1);
+            // printf("New confidence for PC: %u, Address: %u is %u\n", pc, address, this->pht.get_confidence(pc, address));
         } else {
             double match_frac = match_fraction(old_pattern, pattern);
             if (match_frac > INC_MATCH_THRESHOLD) {
